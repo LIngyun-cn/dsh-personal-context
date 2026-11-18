@@ -24,6 +24,7 @@
     "icon.svg",
     "README.md",
     "LICENSE",
+    "NOTICE",
     "CHANGELOG.md",
     "SECURITY.md",
     "CONTRIBUTING.md"
@@ -41,7 +42,7 @@
     "personal-context",
     "markdown"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LIngyun-cn/dsh-personal-context.git"

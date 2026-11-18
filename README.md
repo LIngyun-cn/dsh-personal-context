@@ -358,6 +358,16 @@ node test/smoke.mjs
 
 ## 13. 许可证
 
-MIT，见 [LICENSE](LICENSE)。
+Apache License 2.0，见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
 
 更细的架构、事件流、算法与扩展点见 [docs/DETAIL.md](docs/DETAIL.md)。
+
+---
+
+## ⚠️ 关于作者与项目声明
+
+大家好，我是一名通信专业的大一新生。这套系统是我基于自己对 AI 时代“上下文主权”的思考，从零构思并写出完整架构文档的。
+
+必须坦诚的是：我目前并不精通编程。 这个仓库里 0.4.0 版本的代码，是我向 DSH（DeepSeek Harness）提出需求，由 AI 辅助编写并跑通的（Vibe Coding）。
+
+我开源这个项目，是为了“抛砖引玉”。我希望证明这套基于本地 Markdown 的 AI 记忆协议是行得通的。如果你觉得这个理念很酷，但嫌弃现在的代码写得不够优雅，非常欢迎你 Fork 并重构它！ 哪怕你不能写代码，只要你在 Issues 里提出关于架构的质疑，我也极其欢迎。寻找志同道合的共建者！

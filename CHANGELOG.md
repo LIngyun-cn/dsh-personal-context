@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- 许可证由 MIT 改为 Apache License 2.0，并新增 `NOTICE`。
+- README 末尾加入作者与项目声明。
+
 ## 0.4.0 — 2026-11-17
 
 - 主题与条目敏感度标记：`normal` / `important` / `sensitive`，默认按主题类型继承；面板显示角标，不改变注入行为。
