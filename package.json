@@ -1,0 +1,78 @@
+{
+  "name": "dsh-personal-context",
+  "version": "0.4.0",
+  "description": "Portable, file-based personal context memory for DeepSeek Harness: sensitivity labels, 180-day verified backups, concurrency-safe writes, pre-chat context selection, automatic capture, layered Markdown documents, retrieval, merge, audit and export.",
+  "icon": "icon.svg",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "test",
+    "scripts",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.2.2-rc.1"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "cordis",
+    "plugin",
+    "memory",
+    "personal-context",
+    "markdown"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LIngyun-cn/dsh-personal-context.git"
+  },
+  "homepage": "https://github.com/LIngyun-cn/dsh-personal-context#readme",
+  "bugs": {
+    "url": "https://github.com/LIngyun-cn/dsh-personal-context/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs",
+    "import:archive": "node scripts/import-archive.mjs",
+    "check": "node --check index.js && node --check client.js && node --check lib/service.js && node --check scripts/import-archive.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4 || >=4.1.0 <5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    }
+  }
+}

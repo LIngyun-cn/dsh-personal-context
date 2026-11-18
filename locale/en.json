@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Personal Context",
+    "description": "A portable, file-based long-term memory for your conversations: automatic capture, layered Markdown documents, on-demand retrieval, a pre-chat context chooser, a full-text archive of 640 past sessions, sensitivity labels, 180-day verified backups, concurrency-safe writes, merge, audit and export. Your context stays yours across models and platforms.",
+    "detail": "docs/DETAIL.md"
+  }
+}

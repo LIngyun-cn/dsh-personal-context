@@ -1,0 +1,11 @@
+node_modules/
+Memory/
+*.log
+.env
+.env.*
+coverage/
+.nyc_output/
+.DS_Store
+Thumbs.db
+.pc.lock
+*.tmp
