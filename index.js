@@ -10,7 +10,7 @@ import { PersonalContextService } from './lib/service.js'
 import { randomId } from './lib/fsx.js'
 
 export const name = 'personal-context'
-export const inject = ['tools', 'systemPrompt', 'commands']
+export const inject = ['tools', 'systemPrompt', 'commands', 'webServer']
 
 const TOOL_NAME = 'personal_context'
 const COMMAND_NAME = 'personal-context'
@@ -158,7 +158,7 @@ export function apply(ctx, config = {}) {
 
   /* ------------------------------------------------ pre-session context API */
 
-  const web = ctx.get('webServer')
+  const web = ctx.webServer
   if (web && typeof web.register === 'function') {
     ctx.effect(
       () =>
