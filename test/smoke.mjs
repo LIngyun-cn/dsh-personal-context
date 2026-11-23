@@ -150,6 +150,18 @@ try {
   assert.equal((await service.getTopic('general')).log.length, 0)
   ok('delete moves the entry to the archive instead of erasing it')
 
+  const deletedAgain = await service.deleteEntry({ id: modelSave.entry.id })
+  assert.equal(deletedAgain.deleted, modelSave.entry.id)
+  assert.equal(deletedAgain.alreadyGone, true)
+  assert.equal((await service.getTopic('general')).log.length, 0)
+  ok('deleting an already-deleted entry is idempotent')
+
+  await service._setError(new Error('stale test error'))
+  assert.equal((await service.status()).lastError, 'stale test error')
+  await service.invoke('reindex')
+  assert.equal((await service.status()).lastError, '')
+  ok('successful maintenance clears the stale lastError')
+
   const question = await service.save({ text: '2026-11-17 待确认：是否把备份保留期扩展到 60 天？', kind: 'question' })
   assert.equal(question.entry.status, 'open')
   const edited = await service.updateEntry({ id: question.entry.id, text: '2026-11-17 已确认：备份保留期扩展到 60 天。', kind: 'decision' })

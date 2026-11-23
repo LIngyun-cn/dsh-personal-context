@@ -535,8 +535,8 @@ window.__ModuleLoader__.load({
 
       const removeEntry = async (entry) => {
         if (!window.confirm(t('deleteConfirm'))) return
-        await act('delete', 'delete', { topic: topic.id, id: entry.id }, t('deleted'))
-        await openTopic(topic.id)
+        const result = await act('delete', 'delete', { topic: topic.id, id: entry.id }, t('deleted'))
+        if (result) await openTopic(topic.id)
       }
 
       const editEntry = async (entry) => {
@@ -1008,8 +1008,8 @@ window.__ModuleLoader__.load({
                         }),
                         h('span', { style: { fontSize: 11, color: C.faint } }, String(entry.at).slice(0, 10)),
                         h('div', { style: { flex: 1 } }),
-                        h(Btn, { small: true, onClick: () => onEdit(entry) }, t('edit')),
-                        h(Btn, { small: true, danger: true, onClick: () => onDelete(entry) }, t('delete')),
+                        h(Btn, { small: true, onClick: () => onEdit(entry), disabled: Boolean(busy) }, t('edit')),
+                        h(Btn, { small: true, danger: true, onClick: () => onDelete(entry), disabled: Boolean(busy) }, t('delete')),
                       ),
                       h('div', { style: { fontSize: 12.5, lineHeight: 1.65, color: C.text, wordBreak: 'break-word' } }, entry.text),
                       entry.source ? h('div', { style: { fontSize: 10.5, color: C.faint, marginTop: 5, wordBreak: 'break-all' } }, entry.source) : null,
