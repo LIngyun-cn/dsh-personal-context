@@ -124,6 +124,44 @@ try {
   assert.deepEqual(noContext.topics, [])
   assert.equal((await service.getSessionChoice('none')).mode, 'none')
   ok('session can choose to import no context')
+
+  const captureDefault = await service.setSessionChoice({ sessionId: 'session-capture-default', mode: 'summary' })
+  assert.equal(captureDefault.capture, true)
+  const captureOff = await service.setSessionChoice({ sessionId: 'session-no-capture', mode: 'summary', capture: false })
+  assert.equal(captureOff.capture, false)
+  assert.equal((await service.getSessionChoice('session-no-capture')).capture, false)
+  const capturePreserved = await service.setSessionChoice({ sessionId: 'session-no-capture', mode: 'recent' })
+  assert.equal(capturePreserved.capture, false)
+  ok('per-session capture defaults on and survives mode changes')
+
+  const generalBefore = (await service.getTopic('general')).log.length
+  const skippedCapture = await service.captureFromMessage({
+    text: '记住：本次会话不应该记录这条测试记忆。',
+    sessionId: 'session-no-capture',
+    turn: 2,
+  })
+  assert.equal(skippedCapture.skipped, true)
+  assert.equal(skippedCapture.reason, 'session-capture-off')
+  assert.equal((await service.getTopic('general')).log.length, generalBefore)
+  await assert.rejects(
+    service.invoke('save', { text: '本次会话关闭记录后模型不应写入。', kind: 'fact' }, { by: 'model', sessionId: 'session-no-capture' }),
+    /本次会话已关闭记忆写入/,
+  )
+  const readable = await service.invoke('status', {}, { by: 'model', sessionId: 'session-no-capture' })
+  assert.ok(readable.topics >= 1)
+  ok('no-record sessions block auto capture and model writes but allow reads')
+
+  await service.setSessionChoice({ sessionId: 'session-no-capture', mode: 'summary', capture: true })
+  const resumedCapture = await service.captureFromMessage({
+    text: '记住：本次会话恢复记录，唯一标记 2026-11-23-B。',
+    sessionId: 'session-no-capture',
+    turn: 3,
+  })
+  assert.equal(resumedCapture.saved, 1)
+  ok('re-enabling capture resumes writes for the session')
+
+  await service.clearSessionChoice('session-capture-default')
+  await service.clearSessionChoice('session-no-capture')
   await service.clearSessionChoice('none')
   await service.clearSessionChoice('session-choice')
   assert.equal(await service.getSessionChoice('session-choice'), null)

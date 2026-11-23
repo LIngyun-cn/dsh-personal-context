@@ -102,6 +102,9 @@ window.__ModuleLoader__.load({
       ctxNoneQuick: '不导入',
       ctxNoneQuickHint: '直接把本会话设为不导入任何上下文',
       ctxNoneActive: '未导入',
+      ctxNoCapture: '本次会话不记录新记忆',
+      ctxNoCaptureHint: '自动捕获和模型写入都会停止；已有记忆仍可读取。',
+      ctxNoCaptureShort: '不记录',
       ctxSummary: '摘要',
       ctxSummaryHint: '主文档 + 主题索引，最省 Token。',
       ctxTopics: '按主题',
@@ -219,6 +222,9 @@ window.__ModuleLoader__.load({
       ctxNoneQuick: 'No context',
       ctxNoneQuickHint: 'Set this conversation to import no context',
       ctxNoneActive: 'No context',
+      ctxNoCapture: 'Do not record new memories in this conversation',
+      ctxNoCaptureHint: 'Automatic capture and model writes stop; existing memories remain readable.',
+      ctxNoCaptureShort: 'No recording',
       ctxSummary: 'Summary',
       ctxSummaryHint: 'Master document + topic index, lowest token cost.',
       ctxTopics: 'Topics',
@@ -1324,17 +1330,21 @@ window.__ModuleLoader__.load({
       const [open, setOpen] = useState(false)
       const [choice, setChoice] = useState(null)
       const [mode, setMode] = useState('summary')
+      const [capture, setCapture] = useState(true)
       const [picked, setPicked] = useState([])
       const [topics, setTopics] = useState([])
       const [busy, setBusy] = useState(false)
       const [error, setError] = useState('')
 
       const label = (() => {
-        if (!choice) return t('ctxHero')
-        if (choice.mode === 'none') return `${t('ctxHero')} · ${t('ctxNone')}`
-        if (choice.mode === 'topics') return `${t('ctxHero')} · ${choice.topics?.length ?? 0} ${t('ctxTopicUnit')}`
-        if (choice.mode === 'recent') return `${t('ctxHero')} · ${t('ctxRecent')}`
-        return `${t('ctxHero')} · ${t('ctxSummary')}`
+        let base = t('ctxHero')
+        if (choice) {
+          if (choice.mode === 'none') base = `${t('ctxHero')} · ${t('ctxNone')}`
+          else if (choice.mode === 'topics') base = `${t('ctxHero')} · ${choice.topics?.length ?? 0} ${t('ctxTopicUnit')}`
+          else if (choice.mode === 'recent') base = `${t('ctxHero')} · ${t('ctxRecent')}`
+          else base = `${t('ctxHero')} · ${t('ctxSummary')}`
+        }
+        return choice?.capture === false ? `${base} · ${t('ctxNoCaptureShort')}` : base
       })()
 
       const openChooser = async () => {
@@ -1347,6 +1357,7 @@ window.__ModuleLoader__.load({
           setChoice(data.choice ?? null)
           setMode(data.choice?.mode ?? data.defaultMode ?? 'summary')
           setPicked(Array.isArray(data.choice?.topics) ? data.choice.topics : [])
+          setCapture(data.choice?.capture !== false)
         } catch (err) {
           setError(`${t('ctxLoadFail')}：${err instanceof Error ? err.message : String(err)}`)
         } finally {
@@ -1362,8 +1373,8 @@ window.__ModuleLoader__.load({
         setBusy(true)
         setError('')
         try {
-          const data = await writeContextChoice({ sessionId, mode, topics: mode === 'topics' ? picked : [] })
-          setChoice(data.choice ?? { mode, topics: mode === 'topics' ? picked : [] })
+          const data = await writeContextChoice({ sessionId, mode, topics: mode === 'topics' ? picked : [], capture })
+          setChoice(data.choice ?? { mode, topics: mode === 'topics' ? picked : [], capture })
           setOpen(false)
         } catch (err) {
           setError(`${t('ctxSaveFail')}：${err instanceof Error ? err.message : String(err)}`)
@@ -1378,7 +1389,7 @@ window.__ModuleLoader__.load({
         setError('')
         try {
           const data = await writeContextChoice({ sessionId, mode: 'none', topics: [] })
-          setChoice(data.choice ?? { mode: 'none', topics: [] })
+          setChoice(data.choice ?? { mode: 'none', topics: [], capture })
           setMode('none')
         } catch (err) {
           setError(`${t('ctxSaveFail')}：${err instanceof Error ? err.message : String(err)}`)
@@ -1547,6 +1558,36 @@ window.__ModuleLoader__.load({
                   ),
                 )
               : null,
+            h(
+              'label',
+              {
+                style: {
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  margin: '10px 0 4px',
+                  padding: '9px 10px',
+                  border: `1px solid ${capture ? C.border : C.accent}`,
+                  borderRadius: 8,
+                  background: capture ? 'transparent' : C.accentSoft,
+                  cursor: busy ? 'default' : 'pointer',
+                  lineHeight: 1.5,
+                },
+              },
+              h('input', {
+                type: 'checkbox',
+                checked: !capture,
+                disabled: busy,
+                onChange: (event) => setCapture(!event.target.checked),
+                style: { marginTop: 2, accentColor: C.accent, cursor: busy ? 'default' : 'pointer' },
+              }),
+              h(
+                'div',
+                null,
+                h('div', { style: { fontSize: 12, fontWeight: 600 } }, t('ctxNoCapture')),
+                h('div', { style: { fontSize: 11, color: C.faint, marginTop: 2 } }, t('ctxNoCaptureHint')),
+              ),
+            ),
             error ? h('div', { style: { color: C.danger, fontSize: 12, margin: '8px 0', lineHeight: 1.5 } }, error) : null,
             h(
               'div',

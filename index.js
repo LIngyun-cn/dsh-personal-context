@@ -272,9 +272,10 @@ export function apply(ctx, config = {}) {
         return [{ type: 'text', text: text.length > 16000 ? `${text.slice(0, 16000)}\n…（截断）` : text }]
       },
     },
-    execute: async (args) => {
+    execute: async (args, exec) => {
       const { action, ...payload } = args ?? {}
-      return safe(() => service.invoke(action, payload, { by: 'model' }))
+      const sessionId = exec?.agent?.id ?? ''
+      return safe(() => service.invoke(action, payload, { by: 'model', sessionId }))
     },
   })
 
@@ -315,6 +316,7 @@ export function apply(ctx, config = {}) {
     const list = pending.get(sessionId)
     if (!list || list.length === 0) return
     pending.delete(sessionId)
+    if (!(await service.isSessionCaptureEnabled(sessionId))) return
     const text = list.join('\n')
     if (text.trim().length < 6) return
     try {

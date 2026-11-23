@@ -87,6 +87,7 @@ save({ by:'auto' })  → 去重 → 解析主题 → 备份 → 追加 LOG → �
 - **子代理不捕获**。`agent/created` 中 `source === 'subagent'` 的会话加入内存 Set，跳过来自委派任务的提示词。
 - **失败可见**。`save` 失败会写入 `state.lastError` 并在面板显示；命令/工具返回 `{ok:false,error}`，不假装成功。
 - **暂停语义**。`paused` 或 `autoCapture=false` 时 `captureFromMessage` 返回 `{skipped:true}`；手动与工具写入不受影响。
+- **会话级不记录**。`sessionChoices[id].capture === false` 时，`flush` 与 `captureFromMessage` 都跳过；模型工具带 `sessionId` 的写操作在 `invoke` 入口被拒绝，读取仍允许。该状态只阻止新写入，不删除已有条目；侧栏手动保存不受影响。
 - **没有「会话关闭」保证**：应用在轮次中途被强杀时，该轮可能未落盘；这是当前 DSH 生命周期的硬限制。
 
 ### 规则捕获（capture.js）
@@ -129,6 +130,7 @@ agent.ctx.systemPrompt.section({
 - `record.text` 由 `buildSessionPrompt(choice)` 生成；POST 选择后重新计算并带 revision 计数，避免与默认摘要的异步计算互相覆盖；
 - 选择存 `state.json` 的 `sessionChoices`（键去掉 `session-` 前缀，最多 200 条），因此刷新、重开同一会话仍有效；
 - 模式：`none` 不注入；`summary` 为 `MASTER` 摘要 + 主题索引；`topics` 追加所选主题的稳定概述；`recent` 追加最近 12 条日志；
+- 会话选择另带独立的 `capture` 布尔值（默认 `true`）：为 `false` 时该会话不自动捕获，模型工具写入也会被拒绝；它不改变 `mode`，因此可以「导入上下文但不记录新内容」；
 - 注入内容带 `<personal-context note="本次会话按用户选择加载的长期记忆…">` 包裹，模型知道这是背景资料，不是用户发言；
 - 空库（MASTER 无内容、条目为 0、也没有档案）返回空文本，不注入；
 - 该段在整个会话内持续存在，不只在第一轮；内容长度受 `injectBudget` 限制。
@@ -138,11 +140,11 @@ agent.ctx.systemPrompt.section({
 选前 UI 需要一个不依赖命令通道的读写路径，因此 `index.js` 增加了本机 JSON 路由：
 
 - `GET /personal-context/session?sessionId=…` 返回当前选择与可选主题；
-- `POST /personal-context/session` 写入 `{sessionId,mode,topics}`；
+- `POST /personal-context/session` 写入 `{sessionId,mode,topics,capture}`；`capture` 省略时沿用旧值，旧记录默认 `true`；
 - 必须带 `x-pc-client: dsh-personal-context`（客户端标记，不是认证），并拒绝非同源 `Origin`；没有 CORS 头，跨站脚本无法读取响应或发请求；
 - 该路由只管理「本会话加载哪些上下文」，不暴露记忆内容，也不改变长期文档。
 
-若宿主没有 `webServer` 服务，选择器仍会显示但保存会报错；面板与工具不受影响。
+插件把 `webServer` 声明为硬依赖；宿主没有该服务时插件不会激活，选择器也不会出现。面板与工具本身不依赖该路由，但当前 bundle 以 Web 端为主要目标。
 
 ### 主动检索
 
@@ -293,7 +295,7 @@ agent.ctx.systemPrompt.section({
 
 ## 11. 验证记录（本次实现）
 
-- `node test/smoke.mjs`：28 项断言全部通过（初始化、空库、捕获过滤、模型写入、近似/精确去重、检索、合并、审计、多主题跨主题检索、会话选择过滤主题/最近记录/不导入、导出、迁移、恢复、删除归档、重复删除幂等、成功操作清理旧错误、question 默认 open、自动合并、自动审计、敏感度继承/覆盖、过期备份二级摘要、并发锁/冲突检测、档案索引/全文检索/原文读取、配置/暂停）。
+- `node test/smoke.mjs`：31 项断言全部通过（初始化、空库、捕获过滤、模型写入、近似/精确去重、检索、合并、审计、多主题跨主题检索、会话选择过滤主题/最近记录/不导入、会话不记录默认/继承/自动捕获与模型写入拦截/恢复、导出、迁移、恢复、删除归档、重复删除幂等、成功操作清理旧错误、question 默认 open、自动合并、自动审计、敏感度继承/覆盖、过期备份二级摘要、并发锁/冲突检测、档案索引/全文检索/原文读取、配置/暂停）。
 - 真机：侧栏入口、暗色主题、总览/主题/搜索/档案/设置五页、手动保存、编辑、删除归档、暂停/恢复、备份列表、搜索空态、设置保存均验证。
 - 档案导入：使用 640 会话的本地数据集验证，catalog 行数与 `dataset/txt` 文件数一致；`archive` 标题检索与 `deep` 全文检索通过，`archive_doc` 原文前 30,000 字可读。
 - 真机：一轮用户消息触发 `personal_context save` + `turn/end` 自动捕获；近似去重修复后不再产生重复条目。最终一轮「记住：……只回复收到」验证了：模型未调用工具时，自动捕获仍写入 `fact`，且句末指令不会被并入事实正文。
