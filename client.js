@@ -96,9 +96,12 @@ window.__ModuleLoader__.load({
       noSession: '请先打开一个对话，面板通过会话命令访问记忆。',
       ctxHero: '记忆',
       ctxTitle: '本次会话加载哪些记忆？',
-      ctxSubtitle: '先选择要带入对话的长期上下文。不选择时默认加载主文档摘要。',
-      ctxNone: '不加载',
-      ctxNoneHint: '完全跳过长期记忆；之后仍可在侧栏手动查看。',
+      ctxSubtitle: '先选择要带入对话的长期上下文；点「不导入」可完全跳过。不选择时默认加载主文档摘要。',
+      ctxNone: '不导入任何上下文',
+      ctxNoneHint: '本会话完全不注入长期记忆，也不会用摘要兜底；之后仍可在侧栏手动查看。',
+      ctxNoneQuick: '不导入',
+      ctxNoneQuickHint: '直接把本会话设为不导入任何上下文',
+      ctxNoneActive: '未导入',
       ctxSummary: '摘要',
       ctxSummaryHint: '主文档 + 主题索引，最省 Token。',
       ctxTopics: '按主题',
@@ -210,9 +213,12 @@ window.__ModuleLoader__.load({
       noSession: 'Open a conversation first; the panel reaches memory through a session command.',
       ctxHero: 'Memory',
       ctxTitle: 'What should this conversation load?',
-      ctxSubtitle: 'Pick the long-term context to carry into this conversation. The summary is used when nothing is chosen.',
-      ctxNone: 'Nothing',
-      ctxNoneHint: 'Skip long-term memory entirely; the sidebar remains available.',
+      ctxSubtitle: 'Pick the long-term context to carry in; use “No context” to skip it entirely. The summary is used when nothing is chosen.',
+      ctxNone: 'Do not import any context',
+      ctxNoneHint: 'Inject no long-term memory into this conversation; the summary fallback is disabled too.',
+      ctxNoneQuick: 'No context',
+      ctxNoneQuickHint: 'Set this conversation to import no context',
+      ctxNoneActive: 'No context',
       ctxSummary: 'Summary',
       ctxSummaryHint: 'Master document + topic index, lowest token cost.',
       ctxTopics: 'Topics',
@@ -1366,6 +1372,22 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const quickNone = async () => {
+        if (busy || choice?.mode === 'none') return
+        setBusy(true)
+        setError('')
+        try {
+          const data = await writeContextChoice({ sessionId, mode: 'none', topics: [] })
+          setChoice(data.choice ?? { mode: 'none', topics: [] })
+          setMode('none')
+        } catch (err) {
+          setError(`${t('ctxSaveFail')}：${err instanceof Error ? err.message : String(err)}`)
+          setOpen(true)
+        } finally {
+          setBusy(false)
+        }
+      }
+
       const toggleTopic = (id) => {
         setPicked((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
       }
@@ -1421,12 +1443,44 @@ window.__ModuleLoader__.load({
         label,
       )
 
-      if (!open) return button
+      const quick = h(
+        'button',
+        {
+          type: 'button',
+          onClick: quickNone,
+          disabled: busy || choice?.mode === 'none',
+          title: t('ctxNoneQuickHint'),
+          style: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '3px 7px',
+            borderRadius: 6,
+            border: `1px dashed ${choice?.mode === 'none' ? C.accent : C.border}`,
+            background: 'transparent',
+            color: choice?.mode === 'none' ? C.accent : C.muted,
+            cursor: busy || choice?.mode === 'none' ? 'default' : 'pointer',
+            opacity: busy ? 0.6 : 1,
+            fontSize: 11,
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+          },
+        },
+        choice?.mode === 'none' ? t('ctxNoneActive') : t('ctxNoneQuick'),
+      )
+
+      const controls = h(
+        'div',
+        { style: { display: 'inline-flex', alignItems: 'center', gap: 6 } },
+        button,
+        quick,
+      )
+
+      if (!open) return controls
 
       return h(
         React.Fragment,
         null,
-        button,
+        controls,
         h(
           'div',
           {
