@@ -99,12 +99,14 @@ window.__ModuleLoader__.load({
       ctxSubtitle: '先选择要带入对话的长期上下文；点「不导入」可完全跳过。不选择时默认加载主文档摘要。',
       ctxNone: '不导入任何上下文',
       ctxNoneHint: '本会话完全不注入长期记忆，也不会用摘要兜底；之后仍可在侧栏手动查看。',
-      ctxNoneQuick: '不导入',
-      ctxNoneQuickHint: '直接把本会话设为不导入任何上下文',
-      ctxNoneActive: '未导入',
-      ctxNoCapture: '本次会话不记录新记忆',
-      ctxNoCaptureHint: '自动捕获和模型写入都会停止；已有记忆仍可读取。',
-      ctxNoCaptureShort: '不记录',
+      ctxCapture: '不记录',
+      ctxCaptureActive: '不记录中',
+      ctxCaptureOff: '不记录任何新记忆',
+      ctxCaptureTitle: '本次会话记录',
+      ctxCaptureSubtitle: '控制本会话是否把新信息写入长期记忆；与「加载哪些记忆」互不影响。',
+      ctxCaptureOn: '记录新记忆',
+      ctxCaptureOnHint: '自动捕获和模型工具写入正常；已有记忆仍可读取。',
+      ctxCaptureOffHint: '自动捕获和模型写入停止；已有记录不会被删除。',
       ctxSummary: '摘要',
       ctxSummaryHint: '主文档 + 主题索引，最省 Token。',
       ctxTopics: '按主题',
@@ -219,12 +221,14 @@ window.__ModuleLoader__.load({
       ctxSubtitle: 'Pick the long-term context to carry in; use “No context” to skip it entirely. The summary is used when nothing is chosen.',
       ctxNone: 'Do not import any context',
       ctxNoneHint: 'Inject no long-term memory into this conversation; the summary fallback is disabled too.',
-      ctxNoneQuick: 'No context',
-      ctxNoneQuickHint: 'Set this conversation to import no context',
-      ctxNoneActive: 'No context',
-      ctxNoCapture: 'Do not record new memories in this conversation',
-      ctxNoCaptureHint: 'Automatic capture and model writes stop; existing memories remain readable.',
-      ctxNoCaptureShort: 'No recording',
+      ctxCapture: 'No recording',
+      ctxCaptureActive: 'Not recording',
+      ctxCaptureOff: 'Do not record any new memories',
+      ctxCaptureTitle: 'Recording for this conversation',
+      ctxCaptureSubtitle: 'Control whether new information is written to long-term memory; independent of which memories are loaded.',
+      ctxCaptureOn: 'Record new memories',
+      ctxCaptureOnHint: 'Automatic capture and model tool writes work normally; existing memories remain readable.',
+      ctxCaptureOffHint: 'Automatic capture and model writes stop; existing records are not deleted.',
       ctxSummary: 'Summary',
       ctxSummaryHint: 'Master document + topic index, lowest token cost.',
       ctxTopics: 'Topics',
@@ -1328,9 +1332,11 @@ window.__ModuleLoader__.load({
 
     function HeroContext({ t, sessionId }) {
       const [open, setOpen] = useState(false)
+      const [captureOpen, setCaptureOpen] = useState(false)
       const [choice, setChoice] = useState(null)
       const [mode, setMode] = useState('summary')
       const [capture, setCapture] = useState(true)
+      const [captureDraft, setCaptureDraft] = useState(true)
       const [picked, setPicked] = useState([])
       const [topics, setTopics] = useState([])
       const [busy, setBusy] = useState(false)
@@ -1344,11 +1350,12 @@ window.__ModuleLoader__.load({
           else if (choice.mode === 'recent') base = `${t('ctxHero')} · ${t('ctxRecent')}`
           else base = `${t('ctxHero')} · ${t('ctxSummary')}`
         }
-        return choice?.capture === false ? `${base} · ${t('ctxNoCaptureShort')}` : base
+        return base
       })()
 
       const openChooser = async () => {
         setOpen(true)
+        setCaptureOpen(false)
         setBusy(true)
         setError('')
         try {
@@ -1358,6 +1365,27 @@ window.__ModuleLoader__.load({
           setMode(data.choice?.mode ?? data.defaultMode ?? 'summary')
           setPicked(Array.isArray(data.choice?.topics) ? data.choice.topics : [])
           setCapture(data.choice?.capture !== false)
+          setCaptureDraft(data.choice?.capture !== false)
+        } catch (err) {
+          setError(`${t('ctxLoadFail')}：${err instanceof Error ? err.message : String(err)}`)
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      const openCapture = async () => {
+        setCaptureOpen(true)
+        setOpen(false)
+        setBusy(true)
+        setError('')
+        try {
+          const data = await readContextChoice(sessionId)
+          setTopics(Array.isArray(data.topics) ? data.topics : [])
+          setChoice(data.choice ?? null)
+          setMode(data.choice?.mode ?? data.defaultMode ?? 'summary')
+          setPicked(Array.isArray(data.choice?.topics) ? data.choice.topics : [])
+          setCapture(data.choice?.capture !== false)
+          setCaptureDraft(data.choice?.capture !== false)
         } catch (err) {
           setError(`${t('ctxLoadFail')}：${err instanceof Error ? err.message : String(err)}`)
         } finally {
@@ -1383,17 +1411,21 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const quickNone = async () => {
-        if (busy || choice?.mode === 'none') return
+      const saveCapture = async () => {
         setBusy(true)
         setError('')
         try {
-          const data = await writeContextChoice({ sessionId, mode: 'none', topics: [] })
-          setChoice(data.choice ?? { mode: 'none', topics: [], capture })
-          setMode('none')
+          const data = await writeContextChoice({
+            sessionId,
+            mode,
+            topics: mode === 'topics' ? picked : [],
+            capture: captureDraft,
+          })
+          setChoice(data.choice ?? { mode, topics: mode === 'topics' ? picked : [], capture: captureDraft })
+          setCapture(captureDraft)
+          setCaptureOpen(false)
         } catch (err) {
           setError(`${t('ctxSaveFail')}：${err instanceof Error ? err.message : String(err)}`)
-          setOpen(true)
         } finally {
           setBusy(false)
         }
@@ -1454,39 +1486,154 @@ window.__ModuleLoader__.load({
         label,
       )
 
-      const quick = h(
+      const captureButton = h(
         'button',
         {
           type: 'button',
-          onClick: quickNone,
-          disabled: busy || choice?.mode === 'none',
-          title: t('ctxNoneQuickHint'),
+          onClick: openCapture,
+          disabled: busy,
+          title: t('ctxCaptureTitle'),
           style: {
             display: 'inline-flex',
             alignItems: 'center',
-            padding: '3px 7px',
+            padding: '4px 9px',
             borderRadius: 6,
-            border: `1px dashed ${choice?.mode === 'none' ? C.accent : C.border}`,
-            background: 'transparent',
-            color: choice?.mode === 'none' ? C.accent : C.muted,
-            cursor: busy || choice?.mode === 'none' ? 'default' : 'pointer',
+            border: `1px solid ${capture ? C.border : C.accent}`,
+            background: capture ? 'transparent' : C.accentSoft,
+            color: capture ? C.muted : C.accent,
+            cursor: busy ? 'wait' : 'pointer',
             opacity: busy ? 0.6 : 1,
             fontSize: 11,
             fontFamily: 'inherit',
             whiteSpace: 'nowrap',
           },
         },
-        choice?.mode === 'none' ? t('ctxNoneActive') : t('ctxNoneQuick'),
+        capture ? t('ctxCapture') : t('ctxCaptureActive'),
       )
 
       const controls = h(
         'div',
         { style: { display: 'inline-flex', alignItems: 'center', gap: 6 } },
         button,
-        quick,
+        captureButton,
       )
 
-      if (!open) return controls
+      const captureOption = (value, title, hint) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            key: String(value),
+            onClick: () => setCaptureDraft(value),
+            style: {
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '10px 12px',
+              marginBottom: 8,
+              borderRadius: 8,
+              border: `1px solid ${captureDraft === value ? C.accent : C.border}`,
+              background: captureDraft === value ? C.accentSoft : C.bgSoft,
+              color: C.text,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            },
+          },
+          h('div', { style: { fontSize: 13, fontWeight: 600 } }, title),
+          h('div', { style: { fontSize: 11, color: C.faint, marginTop: 2, lineHeight: 1.5 } }, hint),
+        )
+
+      const captureModal = captureOpen
+        ? h(
+            'div',
+            {
+              onClick: () => setCaptureOpen(false),
+              style: {
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(0,0,0,.58)',
+                padding: 16,
+                boxSizing: 'border-box',
+              },
+            },
+            h(
+              'div',
+              {
+                onClick: (event) => event.stopPropagation(),
+                style: {
+                  width: 'min(520px, 94vw)',
+                  maxHeight: '84vh',
+                  overflow: 'auto',
+                  background: C.bg,
+                  color: C.text,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 12,
+                  padding: 16,
+                  boxShadow: '0 24px 80px rgba(0,0,0,.55)',
+                  fontFamily: 'inherit',
+                },
+              },
+              h('div', { style: { fontSize: 15, fontWeight: 700 } }, t('ctxCaptureTitle')),
+              h(
+                'div',
+                { style: { fontSize: 12, color: C.muted, marginTop: 4, marginBottom: 12, lineHeight: 1.6 } },
+                t('ctxCaptureSubtitle'),
+              ),
+              captureOption(true, t('ctxCaptureOn'), t('ctxCaptureOnHint')),
+              captureOption(false, t('ctxCaptureOff'), t('ctxCaptureOffHint')),
+              error
+                ? h('div', { style: { color: C.danger, fontSize: 12, margin: '8px 0', lineHeight: 1.5 } }, error)
+                : null,
+              h(
+                'div',
+                { style: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 } },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    onClick: () => setCaptureOpen(false),
+                    style: {
+                      padding: '7px 14px',
+                      borderRadius: 7,
+                      border: `1px solid ${C.border}`,
+                      background: 'transparent',
+                      color: C.muted,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    },
+                  },
+                  t('ctxCancel'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    disabled: busy,
+                    onClick: saveCapture,
+                    style: {
+                      padding: '7px 16px',
+                      borderRadius: 7,
+                      border: 'none',
+                      background: C.accent,
+                      color: '#fff',
+                      cursor: busy ? 'wait' : 'pointer',
+                      opacity: busy ? 0.7 : 1,
+                      fontFamily: 'inherit',
+                    },
+                  },
+                  busy ? t('ctxSaving') : t('ctxSave'),
+                ),
+              ),
+            ),
+          )
+        : null
+
+      if (!open && !captureOpen) return controls
+      if (!open) return h(React.Fragment, null, controls, captureModal)
 
       return h(
         React.Fragment,
@@ -1558,36 +1705,6 @@ window.__ModuleLoader__.load({
                   ),
                 )
               : null,
-            h(
-              'label',
-              {
-                style: {
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 8,
-                  margin: '10px 0 4px',
-                  padding: '9px 10px',
-                  border: `1px solid ${capture ? C.border : C.accent}`,
-                  borderRadius: 8,
-                  background: capture ? 'transparent' : C.accentSoft,
-                  cursor: busy ? 'default' : 'pointer',
-                  lineHeight: 1.5,
-                },
-              },
-              h('input', {
-                type: 'checkbox',
-                checked: !capture,
-                disabled: busy,
-                onChange: (event) => setCapture(!event.target.checked),
-                style: { marginTop: 2, accentColor: C.accent, cursor: busy ? 'default' : 'pointer' },
-              }),
-              h(
-                'div',
-                null,
-                h('div', { style: { fontSize: 12, fontWeight: 600 } }, t('ctxNoCapture')),
-                h('div', { style: { fontSize: 11, color: C.faint, marginTop: 2 } }, t('ctxNoCaptureHint')),
-              ),
-            ),
             error ? h('div', { style: { color: C.danger, fontSize: 12, margin: '8px 0', lineHeight: 1.5 } }, error) : null,
             h(
               'div',
