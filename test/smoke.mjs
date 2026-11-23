@@ -47,6 +47,9 @@ try {
   assert.equal(explicitCandidates.length, 1)
   assert.equal(explicitCandidates[0].text, '我的测试代号是蓝鲸-42。')
   ok('capture keeps the fact and drops trailing conversational instructions')
+  assert.equal(extractCandidates('我是通信专业学生，这个是我的作业。').length, 0)
+  assert.equal(extractCandidates('我叫张三，是一名通信专业学生。').length, 1)
+  ok('capture ignores transient homework statements')
 
   const modelSave = await service.save(
     {
@@ -114,6 +117,9 @@ try {
   assert.match(recentContext.text, /方案 B/)
   const selectedContext = await service.context({ topics: ['project-x'] })
   assert.match(selectedContext.text, /项目 X/)
+  assert.doesNotMatch(selectedContext.text, /## 主题索引/)
+  assert.doesNotMatch(selectedContext.text, /id: general/)
+  ok('selected-topic context does not leak the full topic index')
   const chosen = await service.setSessionChoice({ sessionId: 'session-choice', mode: 'topics', topics: ['project-x'] })
   assert.equal(chosen.mode, 'topics')
   assert.deepEqual(chosen.topics, ['project-x'])
